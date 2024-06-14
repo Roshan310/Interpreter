@@ -28,7 +28,6 @@ class Lexer:
 
     def error(self):
         raise Exception("Invalid character!!!!")
-    
 
     def advance(self):
         self.pos += 1
@@ -36,7 +35,6 @@ class Lexer:
             self.current_char = None
         else:
             self.current_char = self.text[self.pos]
-
 
     def skip_whitespace(self):
         while self.current_char is not None and self.current_char.isspace():
@@ -77,7 +75,6 @@ class Lexer:
         return Token(EOF, None)
 
 
-
 class Interpreter:
     def __init__(self, lexer) -> None:
         self.lexer = lexer
@@ -109,11 +106,11 @@ class Interpreter:
             elif token.type == DIVIDE:
                 self.eat(DIVIDE)
                 result = result / self.factor()
-        return result 
+        return result
 
     def expr(self):
         """Parser/Interpreter
-        
+
         expr: term((PLUS | MINUS) term)*
         term: factor((MUL | DIV) factor)*
         factor: INTEGER
@@ -129,6 +126,7 @@ class Interpreter:
                 result -= self.term()
 
         return result
+
 
 def main():
     while True:
