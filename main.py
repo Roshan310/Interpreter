@@ -20,16 +20,15 @@ class Token:
         return self.__str__()
 
 
-class Interpreter:
+class Lexer:
     def __init__(self, text) -> None:
         self.text = text
-
         self.pos = 0
-        self.current_token = None
         self.current_char = self.text[self.pos]
 
     def error(self):
-        raise Exception("Error parsing Input")
+        raise Exception("Invalid character!!!!")
+    
 
     def advance(self):
         self.pos += 1
@@ -37,6 +36,7 @@ class Interpreter:
             self.current_char = None
         else:
             self.current_char = self.text[self.pos]
+
 
     def skip_whitespace(self):
         while self.current_char is not None and self.current_char.isspace():
@@ -76,36 +76,57 @@ class Interpreter:
 
         return Token(EOF, None)
 
+
+
+class Interpreter:
+    def __init__(self, lexer) -> None:
+        self.lexer = lexer
+        self.current_token = self.lexer.get_next_token()
+
+    def error(self):
+        raise Exception("Error parsing Input")
+
     def eat(self, token_type):
         if self.current_token.type == token_type:
-            self.current_token = self.get_next_token()
+            self.current_token = self.lexer.get_next_token()
         else:
             self.error()
 
-    def term(self):
-        """Return the actual value of the INTEGER token"""
+    def factor(self):
+        """factor: INTEGER"""
         token = self.current_token
         self.eat(INTEGER)
         return token.value
 
-    def expr(self):
-        self.current_token = self.get_next_token()
+    def term(self):
+        """term: factor ((MUL | DIV) factor)*"""
+        result = self.factor()
+        while self.current_token.type in (MULTIPLY, DIVIDE):
+            token = self.current_token
+            if token.type == MULTIPLY:
+                self.eat(MULTIPLY)
+                result = result * self.factor()
+            elif token.type == DIVIDE:
+                self.eat(DIVIDE)
+                result = result / self.factor()
+        return result 
 
+    def expr(self):
+        """Parser/Interpreter
+        
+        expr: term((PLUS | MINUS) term)*
+        term: factor((MUL | DIV) factor)*
+        factor: INTEGER
+        """
         result = self.term()
-        while self.current_token.type in (PLUS, MINUS, DIVIDE, MULTIPLY):
+        while self.current_token.type in (PLUS, MINUS):
             token = self.current_token
             if token.type == PLUS:
                 self.eat(PLUS)
-                result = result + self.term()
+                result += self.term()
             elif token.type == MINUS:
                 self.eat(MINUS)
-                result = result - self.term()
-            elif token.type == DIVIDE:
-                self.eat(DIVIDE)
-                result = result/self.term()
-            elif token.type == MULTIPLY:
-                self.eat(MULTIPLY)
-                result = result * self.term()
+                result -= self.term()
 
         return result
 
@@ -118,7 +139,8 @@ def main():
             break
         if not text:
             continue
-        interpreter = Interpreter(text)
+        lexer = Lexer(text)
+        interpreter = Interpreter(lexer)
         result = interpreter.expr()
         print(result)
 
