@@ -1,6 +1,14 @@
-INTEGER, PLUS, MINUS, EOF = "INTEGER", "PLUS", "MINUS", "EOF"
+INTEGER, PLUS, MINUS, DIVIDE, MULTIPLY, EOF = (
+    "INTEGER",
+    "PLUS",
+    "MINUS",
+    "DIV",
+    "MUL",
+    "EOF",
+)
 
-class Token():
+
+class Token:
     def __init__(self, type, value) -> None:
         self.type = type
         self.value = value
@@ -10,9 +18,9 @@ class Token():
 
     def __repr__(self) -> str:
         return self.__str__()
-    
 
-class Interpreter():
+
+class Interpreter:
     def __init__(self, text) -> None:
         self.text = text
 
@@ -43,7 +51,7 @@ class Interpreter():
         return int(result)
 
     def get_next_token(self):
-        
+
         while self.current_char is not None:
             if self.current_char.isspace():
                 self.skip_whitespace()
@@ -51,18 +59,23 @@ class Interpreter():
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
 
-            if self.current_char == '+':
+            if self.current_char == "+":
                 self.advance()
-                return Token(PLUS, '+')
-            if self.current_char == '-':
+                return Token(PLUS, "+")
+            if self.current_char == "-":
                 self.advance()
-                return Token(MINUS, '-')
-            
+                return Token(MINUS, "-")
+            if self.current_char == "/":
+                self.advance()
+                return Token(DIVIDE, "/")
+            if self.current_char == "*":
+                self.advance()
+                return Token(MULTIPLY, "*")
+
             self.error()
 
-
         return Token(EOF, None)
-    
+
     def eat(self, token_type):
         if self.current_token.type == token_type:
             self.current_token = self.get_next_token()
@@ -78,20 +91,27 @@ class Interpreter():
         op = self.current_token
         if op.type == PLUS:
             self.eat(PLUS)
-        else:
+        elif op.type == MINUS:
             self.eat(MINUS)
+        elif op.type == DIVIDE:
+            self.eat(DIVIDE)
+        elif op.type == MULTIPLY:
+            self.eat(MULTIPLY)
 
         right = self.current_token
         self.eat(INTEGER)
 
-
         if op.type == PLUS:
             result = left.value + right.value
-
-        else:
+        elif op.type == MINUS:
             result = left.value - right.value
+        elif op.type == DIVIDE:
+            result = left.value / right.value
+        elif op.type == MULTIPLY:
+            result = left.value * right.value
 
         return result
+
 
 def main():
     while True:
