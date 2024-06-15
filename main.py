@@ -1,3 +1,7 @@
+
+#EOF represents end-of-file token which indicate 
+#that there is no more input for Lexical Analysis
+
 INTEGER, PLUS, MINUS, DIVIDE, MULTIPLY, LPAREN, RPAREN ,EOF = (
     "INTEGER",
     "PLUS",
@@ -8,6 +12,14 @@ INTEGER, PLUS, MINUS, DIVIDE, MULTIPLY, LPAREN, RPAREN ,EOF = (
     ")",
     "EOF",
 )
+
+
+##############################
+#                            #
+#         LEXER              #
+#                            # 
+##############################
+
 
 
 class Token:
@@ -83,7 +95,21 @@ class Lexer:
         return Token(EOF, None)
 
 
-class Interpreter:
+class AST:
+    pass
+
+class BinOp(AST):
+    def __init__(self, left, op, right) -> None:
+        self.left = left 
+        self.token = self.op = op
+        self.right = right
+
+class Num(AST):
+    def __init__(self, token) -> None:
+        self.token = token
+        self.value = token.value
+
+class Parser:
     def __init__(self, lexer) -> None:
         self.lexer = lexer
         self.current_token = self.lexer.get_next_token()
@@ -102,25 +128,25 @@ class Interpreter:
         token = self.current_token
         if token.type == INTEGER:
             self.eat(INTEGER)
-            return token.value
+            return Num(token)
         elif token.type == LPAREN:
             self.eat(LPAREN)
-            result = self.expr()
+            node = self.expr()
             self.eat(RPAREN)
-            return result
+            return node
 
     def term(self):
         """term: factor ((MUL | DIV) factor)*"""
-        result = self.factor()
+        node = self.factor()
         while self.current_token.type in (MULTIPLY, DIVIDE):
             token = self.current_token
             if token.type == MULTIPLY:
                 self.eat(MULTIPLY)
-                result = result * self.factor()
             elif token.type == DIVIDE:
                 self.eat(DIVIDE)
-                result = result / self.factor()
-        return result
+            
+            node = BinOp(left=node, op=token, right=self.factor())
+        return node
 
     def expr(self):
         """Parser/Interpreter
@@ -129,17 +155,33 @@ class Interpreter:
         term: factor((MUL | DIV) factor)*
         factor: INTEGER
         """
-        result = self.term()
+        node = self.term()
         while self.current_token.type in (PLUS, MINUS):
             token = self.current_token
             if token.type == PLUS:
                 self.eat(PLUS)
-                result += self.term()
             elif token.type == MINUS:
                 self.eat(MINUS)
-                result -= self.term()
+                
+            node = BinOp(left=node, op=token, right=self.term()) 
 
-        return result
+        return node
+
+    def parse(self):
+        return self.expr()
+    
+##############################
+#                            #
+#         INTERPRETER        #
+#                            # 
+##############################
+
+class NodeVisitor:
+    pass
+
+class Interpreter(NodeVisitor):
+    def __init__(self, parser) -> None:
+        self.parser = parser
 
 
 def main():
