@@ -95,6 +95,15 @@ class Lexer:
         return Token(EOF, None)
 
 
+
+##############################
+#                            #
+#           PARSER           #
+#                            # 
+##############################
+
+
+
 class AST:
     pass
 
@@ -177,11 +186,34 @@ class Parser:
 ##############################
 
 class NodeVisitor:
-    pass
+    def visit(self, node):
+        method_name = 'visit_' + type(node).__name__
+        visitor = getattr(self, method_name, self.generic_visit)
+        return visitor(node)
+    
+    def generic_visit(self, node):
+        raise Exception(f"No visit_{type(node).__name__} method")
 
 class Interpreter(NodeVisitor):
     def __init__(self, parser) -> None:
         self.parser = parser
+
+    def visit_BinOp(self, node):
+        if node.op.type == PLUS:
+            return self.visit(node.left) + self.visit(node.right)
+        elif node.op.type == MINUS:
+            return self.visit(node.left) - self.visit(node.right)
+        elif node.op.type == MULTIPLY:
+            return self.visit(node.left) * self.visit(node.right)
+        elif node.op.type == DIVIDE:
+            return self.visit(node.left) / self.visit(node.right)
+        
+    def visit_Num(self, node):
+        return node.value
+    
+    def interpret(self):
+        tree = self.parser.parse()
+        return self.visit(tree)
 
 
 def main():
@@ -194,8 +226,9 @@ def main():
         if not text:
             continue
         lexer = Lexer(text)
-        interpreter = Interpreter(lexer)
-        result = interpreter.expr()
+        parser = Parser(lexer)
+        interpreter = Interpreter(parser)
+        result = interpreter.interpret()
         print(result)
 
 
