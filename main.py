@@ -1,8 +1,7 @@
+# EOF represents end-of-file token which indicate
+# that there is no more input for Lexical Analysis
 
-#EOF represents end-of-file token which indicate 
-#that there is no more input for Lexical Analysis
-
-INTEGER, PLUS, MINUS, DIVIDE, MULTIPLY, LPAREN, RPAREN ,EOF = (
+INTEGER, PLUS, MINUS, DIVIDE, MULTIPLY, LPAREN, RPAREN, EOF = (
     "INTEGER",
     "PLUS",
     "MINUS",
@@ -17,9 +16,8 @@ INTEGER, PLUS, MINUS, DIVIDE, MULTIPLY, LPAREN, RPAREN ,EOF = (
 ##############################
 #                            #
 #         LEXER              #
-#                            # 
+#                            #
 ##############################
-
 
 
 class Token:
@@ -95,28 +93,35 @@ class Lexer:
         return Token(EOF, None)
 
 
-
 ##############################
 #                            #
 #           PARSER           #
-#                            # 
+#                            #
 ##############################
-
 
 
 class AST:
     pass
 
+
+class UnaryOp(AST):
+    def __init__(self, op, expr) -> None:
+        self.token = self.op = op
+        self.expr = expr
+
+
 class BinOp(AST):
     def __init__(self, left, op, right) -> None:
-        self.left = left 
+        self.left = left
         self.token = self.op = op
         self.right = right
+
 
 class Num(AST):
     def __init__(self, token) -> None:
         self.token = token
         self.value = token.value
+
 
 class Parser:
     def __init__(self, lexer) -> None:
@@ -135,7 +140,15 @@ class Parser:
     def factor(self):
         """factor: INTEGER"""
         token = self.current_token
-        if token.type == INTEGER:
+        if token.type == PLUS:
+            self.eat(PLUS)
+            node = UnaryOp(token, self.factor())
+            return node
+        elif token.type == MINUS:
+            self.eat(MINUS)
+            node = UnaryOp(token, self.factor())
+            return node
+        elif token.type == INTEGER:
             self.eat(INTEGER)
             return Num(token)
         elif token.type == LPAREN:
@@ -153,7 +166,7 @@ class Parser:
                 self.eat(MULTIPLY)
             elif token.type == DIVIDE:
                 self.eat(DIVIDE)
-            
+
             node = BinOp(left=node, op=token, right=self.factor())
         return node
 
@@ -171,32 +184,42 @@ class Parser:
                 self.eat(PLUS)
             elif token.type == MINUS:
                 self.eat(MINUS)
-                
-            node = BinOp(left=node, op=token, right=self.term()) 
+
+            node = BinOp(left=node, op=token, right=self.term())
 
         return node
 
     def parse(self):
         return self.expr()
-    
+
+
 ##############################
 #                            #
 #         INTERPRETER        #
-#                            # 
+#                            #
 ##############################
+
 
 class NodeVisitor:
     def visit(self, node):
-        method_name = 'visit_' + type(node).__name__
+        method_name = "visit_" + type(node).__name__
         visitor = getattr(self, method_name, self.generic_visit)
         return visitor(node)
-    
+
     def generic_visit(self, node):
         raise Exception(f"No visit_{type(node).__name__} method")
+
 
 class Interpreter(NodeVisitor):
     def __init__(self, parser) -> None:
         self.parser = parser
+
+    def visit_UnaryOp(self, node):
+        op = node.op.type
+        if op == PLUS:
+            return +self.visit(node.expr)
+        elif op == MINUS:
+            return -self.visit(node.expr)
 
     def visit_BinOp(self, node):
         if node.op.type == PLUS:
@@ -207,10 +230,10 @@ class Interpreter(NodeVisitor):
             return self.visit(node.left) * self.visit(node.right)
         elif node.op.type == DIVIDE:
             return self.visit(node.left) / self.visit(node.right)
-        
+
     def visit_Num(self, node):
         return node.value
-    
+
     def interpret(self):
         tree = self.parser.parse()
         return self.visit(tree)
