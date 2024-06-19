@@ -1,7 +1,22 @@
 # EOF represents end-of-file token which indicate
 # that there is no more input for Lexical Analysis
 
-INTEGER, PLUS, MINUS, DIVIDE, MULTIPLY, LPAREN, RPAREN, EOF = (
+(
+    INTEGER,
+    PLUS,
+    MINUS,
+    DIVIDE,
+    MULTIPLY,
+    LPAREN,
+    RPAREN,
+    BEGIN,
+    END,
+    ID,
+    DOT,
+    SEMI,
+    ASSIGN,
+    EOF,
+) = (
     "INTEGER",
     "PLUS",
     "MINUS",
@@ -9,6 +24,12 @@ INTEGER, PLUS, MINUS, DIVIDE, MULTIPLY, LPAREN, RPAREN, EOF = (
     "MUL",
     "(",
     ")",
+    "BEGIN",
+    "END",
+    "ID",
+    "DOT",
+    "SEMI",
+    "ASSIGN",
     "EOF",
 )
 
@@ -32,6 +53,9 @@ class Token:
         return self.__str__()
 
 
+RESERVED_KEYWORDS = {"BEGIN": Token(BEGIN, "BEGIN"), "END": Token(END, "END")}
+
+
 class Lexer:
     def __init__(self, text) -> None:
         self.text = text
@@ -40,6 +64,13 @@ class Lexer:
 
     def error(self):
         raise Exception("Invalid character!!!!")
+
+    def peek(self):
+        peek_pos = self.pos + 1
+        if peek_pos > len(self.text) - 1:
+            return None
+        else:
+            return self.text[self.pos]
 
     def advance(self):
         self.pos += 1
@@ -52,7 +83,7 @@ class Lexer:
         while self.current_char is not None and self.current_char.isspace():
             self.advance()
 
-    def integer(self):
+    def integer(self) -> int:
         result = ""
         while self.current_char is not None and self.current_char.isdigit():
             result += self.current_char
@@ -60,15 +91,35 @@ class Lexer:
 
         return int(result)
 
+    def _id(self):
+        result = ""
+        while self.current_char is not None and self.current_char.isalnum():
+            result += self.current_char
+            self.advance()
+
+        token = RESERVED_KEYWORDS.get(result, Token(ID, result))
+        return token
+
     def get_next_token(self):
 
         while self.current_char is not None:
             if self.current_char.isspace():
                 self.skip_whitespace()
                 continue
+            if self.current_char.isalpha():
+                return self._id()
+            if self.current_char == ":" and self.peek() == "=":
+                self.advance()
+                self.advance()
+                return Token(ASSIGN, ":=")
+            if self.current_char == ";":
+                self.advance()
+                return Token(SEMI, ";")
+            if self.current_char == ".":
+                self.advance()
+                return Token(DOT, ".")
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
-
             if self.current_char == "+":
                 self.advance()
                 return Token(PLUS, "+")
