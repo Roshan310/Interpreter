@@ -154,12 +154,30 @@ class Lexer:
 class AST:
     pass
 
+class Compound(AST):
+    """Represents a 'BEGIN ... END' block"""
+    def __init__(self) -> None:
+        self.children = []
+
+class Assign(AST):
+    def __init__(self, left, op, right) -> None:
+        self.left = left
+        self.token = self.op = op
+        self.right = right
+
+class Var(AST):
+    def __init__(self, token) -> None:
+        self.token = token
+        self.value = token.value
+
+class NoOp(AST):
+    pass
+
 
 class UnaryOp(AST):
     def __init__(self, op, expr) -> None:
         self.token = self.op = op
         self.expr = expr
-
 
 class BinOp(AST):
     def __init__(self, left, op, right) -> None:
@@ -187,6 +205,27 @@ class Parser:
             self.current_token = self.lexer.get_next_token()
         else:
             self.error()
+
+    def program(self):
+        pass
+
+    def compound_statement(self):
+        pass
+
+    def statement_list(self):
+        pass
+
+    def statement(self):
+        pass
+
+    def assginment_statement(self):
+        pass
+
+    def variable(self):
+        pass
+
+    def empty(self):
+        pass
 
     def factor(self):
         """factor: INTEGER"""
