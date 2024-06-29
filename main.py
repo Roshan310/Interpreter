@@ -207,26 +207,71 @@ class Parser:
             self.error()
 
     def program(self):
-        pass
+        """program: compound_statement DOT"""
+        node = self.compound_statement()
+        self.eat(DOT)
+        return node
 
     def compound_statement(self):
-        pass
+        """compound_statement: BEGIN statement_list END"""
+        self.eat(BEGIN)
+        nodes = self.statement_list()
+        self.eat(END)
+
+        root = Compound()
+        for node in nodes:
+            root.children.append(node)
+        
+        return root
 
     def statement_list(self):
-        pass
+        """
+        statement_list: statement | statement SEMI statement_list
+        """
+        node = self.statement()
+        results = [node]
+
+        while self.current_token.type == SEMI:
+            self.eat(SEMI)
+            results.append(self.statement())
+
+        if self.current_token.type == ID:
+            self.error()
+        
+        return results
 
     def statement(self):
-        pass
+        """
+        statement: compound_statement | assignment_statement | empty
+        """
+        if self.current_token.type == BEGIN:
+            node = self.compound_statement()
+        elif self.current_token.type == ID:
+            node = self.assginment_statement()
+        else:
+            node = self.empty()
+
+        return node
 
     def assginment_statement(self):
-        pass
+        """assignment: variable ASSIGN expr"""
+        left = self.variable()
+        token = self.current_token
+        self.eat(ASSIGN)
+        right = self.expr()
+        node = Assign(left, token, right)
+        return node
 
     def variable(self):
-        pass
-
+        """variable: ID"""
+        node = Var(self.current_token)
+        self.eat(ID)
+        return node
+    
     def empty(self):
-        pass
-
+        """An empty production rule"""
+        return NoOp()
+    
     def factor(self):
         """factor: INTEGER"""
         token = self.current_token
@@ -246,7 +291,9 @@ class Parser:
             node = self.expr()
             self.eat(RPAREN)
             return node
-
+        else:
+            node = self.variable()
+            return node
     def term(self):
         """term: factor ((MUL | DIV) factor)*"""
         node = self.factor()
