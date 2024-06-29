@@ -70,7 +70,7 @@ class Lexer:
         if peek_pos > len(self.text) - 1:
             return None
         else:
-            return self.text[self.pos]
+            return self.text[self.peek_pos]
 
     def advance(self):
         self.pos += 1
