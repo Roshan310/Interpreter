@@ -5,7 +5,6 @@
     INTEGER,
     PLUS,
     MINUS,
-    DIVIDE,
     MULTIPLY,
     LPAREN,
     RPAREN,
@@ -29,7 +28,6 @@
     "INTEGER",
     "PLUS",
     "MINUS",
-    "DIV",
     "MUL",
     "(",
     ")",
@@ -71,7 +69,16 @@ class Token:
         return self.__str__()
 
 
-RESERVED_KEYWORDS = {"BEGIN": Token(BEGIN, "BEGIN"), "END": Token(END, "END")}
+RESERVED_KEYWORDS = {
+    "PROGRAM": Token(PROGRAM, "PROGRAM"),
+    "VAR": Token(VAR, "VAR"),
+    "DIV": Token(INTEGER_DIV, "DIV"),
+    "INTEGER": Token(INTEGER, "INTEGER"),
+    "REAL": Token(REAL, "REAL"),
+    "BEGIN": Token(BEGIN, "BEGIN"),
+    "END": Token(END, "END")
+    
+}
 
 
 class Lexer:
@@ -101,13 +108,31 @@ class Lexer:
         while self.current_char is not None and self.current_char.isspace():
             self.advance()
 
-    def integer(self) -> int:
+    def skip_comment(self):
+        while self.current_char != '}':
+            self.advance()
+        self.advance()
+
+    def number(self) -> int:
+        """Return a multidigit integer or float consumed from the input"""
         result = ""
         while self.current_char is not None and self.current_char.isdigit():
             result += self.current_char
             self.advance()
 
-        return int(result)
+        if self.current_char == '.':
+            result += self.current_char
+            self.advance()
+
+            while self.current_char is not None and self.current_char.isdigit():
+                result += self.current_char
+                self.advance()
+            token = Token("REAL_CONST", float(result))
+
+        else:
+            token = Token("INTEGER_CONST", int(result))
+
+        return token
 
     def _id(self):
         result = ""
@@ -124,35 +149,62 @@ class Lexer:
             if self.current_char.isspace():
                 self.skip_whitespace()
                 continue
+
+            if self.current_char == "{":
+                self.advance()
+                self.skip_comment()
+                continue
+
             if self.current_char.isalpha():
                 return self._id()
+
+            if self.current_char.isdigit():
+                return self.number()
+            
+            if self.current_char == ":":
+                self.advance()
+                return Token(COLON, ":")
+
+            if self.current_char == ",":
+                self.advance()
+                return Token(COMMA, ",")
+            
             if self.current_char == ":" and self.peek() == "=":
                 self.advance()
                 self.advance()
                 return Token(ASSIGN, ":=")
+            
             if self.current_char == ";":
                 self.advance()
                 return Token(SEMI, ";")
+            
             if self.current_char == ".":
                 self.advance()
                 return Token(DOT, ".")
+            
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
+            
             if self.current_char == "+":
                 self.advance()
                 return Token(PLUS, "+")
+            
             if self.current_char == "-":
                 self.advance()
                 return Token(MINUS, "-")
+            
             if self.current_char == "/":
                 self.advance()
-                return Token(DIVIDE, "/")
+                return Token(FLOAT_DIV, "/")
+            
             if self.current_char == "*":
                 self.advance()
                 return Token(MULTIPLY, "*")
+            
             if self.current_char == "(":
                 self.advance()
                 return Token(LPAREN, "(")
+            
             if self.current_char == ")":
                 self.advance()
                 return Token(RPAREN, ")")
@@ -172,10 +224,13 @@ class Lexer:
 class AST:
     pass
 
+
 class Compound(AST):
     """Represents a 'BEGIN ... END' block"""
+
     def __init__(self) -> None:
         self.children = []
+
 
 class Assign(AST):
     def __init__(self, left, op, right) -> None:
@@ -183,10 +238,12 @@ class Assign(AST):
         self.token = self.op = op
         self.right = right
 
+
 class Var(AST):
     def __init__(self, token) -> None:
         self.token = token
         self.value = token.value
+
 
 class NoOp(AST):
     pass
@@ -196,6 +253,7 @@ class UnaryOp(AST):
     def __init__(self, op, expr) -> None:
         self.token = self.op = op
         self.expr = expr
+
 
 class BinOp(AST):
     def __init__(self, left, op, right) -> None:
@@ -209,6 +267,33 @@ class Num(AST):
         self.token = token
         self.value = token.value
 
+
+class Program(AST):
+    
+    def __init__(self, name, block) -> None:
+        self.name = name
+        self.block = block
+
+
+class Block(AST):
+    
+    def __init__(self, declarations, compound_statement) -> None:
+        self.declarations = declarations
+        self.compound_statement = compound_statement
+
+
+class VarDecl(AST):
+    
+    def __init__(self, var_node, type_node) -> None:
+        self.var_node = var_node
+        self.type_node = type_node
+
+
+class Type(AST):
+    
+    def __init__(self, token) -> None:
+        self.token = token
+        self.value = token.value
 
 class Parser:
     def __init__(self, lexer) -> None:
@@ -225,9 +310,59 @@ class Parser:
             self.error()
 
     def program(self):
-        """program: compound_statement DOT"""
-        node = self.compound_statement()
+        """program: PROGRAM variable SEMI block DOT"""
+        self.eat(PROGRAM)
+        var_node = self.variable()
+        prog_name = var_node.value
+        self.eat(SEMI)
+        block_node = self.block()
+        program_node = Program(prog_name, block_node)
         self.eat(DOT)
+        return program_node
+
+    def block(self):
+        """block: declarations compound_statement"""
+        declaration_nodes = self.declarations()
+        compound_statement_node = self.compound_statement()
+        node = Block(declaration_nodes, compound_statement_node)
+        return node
+
+    def declarations(self):
+        """declarations: VAR (variable declaration SEMI)+ | empty"""
+        declarations = []
+        if self.current_token.type == VAR:
+            self.eat(VAR)
+            while self.current_token.type == ID:
+                var_decl = self.variable_declaration()
+                declarations.extend(var_decl)
+                self.eat(SEMI)
+
+        return declarations
+
+    def variable_declaration(self):
+        """variable_declaration: ID (COMMA ID)* COLON type_spec"""
+    
+        var_nodes = [VAR(self.current_token)]
+        self.eat(ID)
+
+        while self.current_token.type == COMMA:
+            self.eat(COMMA)
+            var_nodes.extend(VAR(self.current_token))
+            self.eat(ID)
+        self.eat(COLON)
+
+        type_node = self.type_spec()
+        var_declarations = [VarDecl(var_node, type_node) for var_node in var_nodes]
+        return var_declarations
+    
+    def type_spec(self):
+        """type_spec: INTEGER | REAL"""
+        token = self.current_token
+        if self.current_token.type == INTEGER:
+            self.eat(INTEGER)
+        else:
+            self.eat(REAL)
+        node = Type(Token)
         return node
 
     def compound_statement(self):
@@ -239,7 +374,7 @@ class Parser:
         root = Compound()
         for node in nodes:
             root.children.append(node)
-        
+
         return root
 
     def statement_list(self):
@@ -255,7 +390,7 @@ class Parser:
 
         if self.current_token.type == ID:
             self.error()
-        
+
         return results
 
     def statement(self):
@@ -285,13 +420,19 @@ class Parser:
         node = Var(self.current_token)
         self.eat(ID)
         return node
-    
+
     def empty(self):
         """An empty production rule"""
         return NoOp()
-    
+
     def factor(self):
-        """factor: INTEGER"""
+        """factor: PLUS factor
+                 | MINUS factor
+                 | INTEGER_CONST
+                 | REAL_CONST
+                 | LPAREN expr RPAREN
+                 | variable
+        """
         token = self.current_token
         if token.type == PLUS:
             self.eat(PLUS)
@@ -301,8 +442,11 @@ class Parser:
             self.eat(MINUS)
             node = UnaryOp(token, self.factor())
             return node
-        elif token.type == INTEGER:
-            self.eat(INTEGER)
+        elif token.type == INTEGER_CONST:
+            self.eat(INTEGER_CONST)
+            return Num(token)
+        elif token.type == REAL_CONST:
+            self.eat(REAL_CONST)
             return Num(token)
         elif token.type == LPAREN:
             self.eat(LPAREN)
@@ -312,17 +456,22 @@ class Parser:
         else:
             node = self.variable()
             return node
+
     def term(self):
-        """term: factor ((MUL | DIV) factor)*"""
+        """term: factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)*"""
         node = self.factor()
-        while self.current_token.type in (MULTIPLY, DIVIDE):
+
+        while self.current_token.type in (MULTIPLY, INTEGER_DIV, FLOAT_DIV):
             token = self.current_token
             if token.type == MULTIPLY:
                 self.eat(MULTIPLY)
-            elif token.type == DIVIDE:
-                self.eat(DIVIDE)
+            elif token.type == INTEGER_DIV:
+                self.eat(INTEGER_DIV)
+            elif token.type == FLOAT_DIV:
+                self.eat(FLOAT_DIV)
 
             node = BinOp(left=node, op=token, right=self.factor())
+
         return node
 
     def expr(self):
@@ -360,6 +509,7 @@ class Parser:
 
 
 class NodeVisitor:
+
     def visit(self, node):
         method_name = "visit_" + type(node).__name__
         visitor = getattr(self, method_name, self.generic_visit)
@@ -370,12 +520,13 @@ class NodeVisitor:
 
 
 class Interpreter(NodeVisitor):
+
     def __init__(self, parser) -> None:
         self.parser = parser
-        #SYMBOL TABLE
-        #that tracks various symbols
-        #like variable name and it's value
-        #for example, a:=3, here 'a' will be stored as key and 3 as value of the key
+        # SYMBOL TABLE
+        # that tracks various symbols
+        # like variable name and it's value
+        # for example, a:=3, here 'a' will be stored as key and 3 as value of the key
         self.GLOBAL_SCOPE = {}
 
     def visit_UnaryOp(self, node):
@@ -392,8 +543,10 @@ class Interpreter(NodeVisitor):
             return self.visit(node.left) - self.visit(node.right)
         elif node.op.type == MULTIPLY:
             return self.visit(node.left) * self.visit(node.right)
-        elif node.op.type == DIVIDE:
-            return self.visit(node.left) / self.visit(node.right)
+        elif node.op.type == INTEGER_DIV:
+            return self.visit(node.left) // self.visit(node.right)
+        elif node.op.type == FLOAT_DIV:
+            return self.visit(node.left) / self.visti(node.right)
 
     def visit_Num(self, node):
         return node.value
@@ -416,6 +569,20 @@ class Interpreter(NodeVisitor):
             raise NameError(repr(var_name))
         else:
             return val
+        
+    def visit_Program(self, node):
+        self.visit(node.block)
+
+    def visit_Block(self, node):
+        for declaration in node.declarations:
+            self.visit(declaration)
+        self.visit(node.compound_statement)
+
+    def visit_VarDecl(self, node):
+        pass
+
+    def visit_Type(self, node):
+        pass
 
     def interpret(self):
         tree = self.parser.parse()
