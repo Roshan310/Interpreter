@@ -1,85 +1,24 @@
 # EOF represents end-of-file token which indicate
 # that there is no more input for Lexical Analysis
+from tokenizer import Token
+from constants import TokenType
 
-(
-    INTEGER,
-    PLUS,
-    MINUS,
-    MULTIPLY,
-    LPAREN,
-    RPAREN,
-    BEGIN,
-    END,
-    ID,
-    DOT,
-    SEMI,
-    ASSIGN,
-    COLON,
-    PROGRAM,
-    VAR,
-    COMMA,
-    INTEGER_CONST,
-    REAL_CONST,
-    INTEGER_DIV,
-    FLOAT_DIV,
-    REAL,
-    EOF,
-) = (
-    "INTEGER",
-    "PLUS",
-    "MINUS",
-    "MUL",
-    "(",
-    ")",
-    "BEGIN",
-    "END",
-    "ID",
-    "DOT",
-    "SEMI",
-    "ASSIGN",
-    "COLON",
-    "PROGRAM",
-    "VAR",
-    "COMMA",
-    "INTEGER_CONST",
-    "REAL_CONST",
-    "INTEGER_DIV",
-    "FLOAT_DIV",
-    "REAL",
-    "EOF",
-)
-
+RESERVED_KEYWORDS = {
+    "PROGRAM": Token(TokenType.PROGRAM.value, "PROGRAM"),
+    "VAR": Token(TokenType.VAR.value, "VAR"),
+    "DIV": Token(TokenType.INTEGER_DIV.value, "DIV"),
+    "INTEGER": Token(TokenType.INTEGER.value, "INTEGER"),
+    "REAL": Token(TokenType.REAL.value, "REAL"),
+    "BEGIN": Token(TokenType.BEGIN.value, "BEGIN"),
+    "END": Token(TokenType.END.value, "END")
+    
+}
 
 ##############################
 #                            #
 #         LEXER              #
 #                            #
 ##############################
-
-
-class Token:
-    def __init__(self, type, value) -> None:
-        self.type = type
-        self.value = value
-
-    def __str__(self) -> str:
-        return f"Token({self.type}, {self.value})"
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-
-RESERVED_KEYWORDS = {
-    "PROGRAM": Token(PROGRAM, "PROGRAM"),
-    "VAR": Token(VAR, "VAR"),
-    "DIV": Token(INTEGER_DIV, "DIV"),
-    "INTEGER": Token(INTEGER, "INTEGER"),
-    "REAL": Token(REAL, "REAL"),
-    "BEGIN": Token(BEGIN, "BEGIN"),
-    "END": Token(END, "END")
-    
-}
-
 
 class Lexer:
     def __init__(self, text) -> None:
@@ -140,7 +79,7 @@ class Lexer:
             result += self.current_char
             self.advance()
 
-        token = RESERVED_KEYWORDS.get(result, Token(ID, result))
+        token = RESERVED_KEYWORDS.get(result, Token(TokenType.ID.value, result))
         return token
 
     def get_next_token(self):
@@ -163,55 +102,55 @@ class Lexer:
             
             if self.current_char == ":":
                 self.advance()
-                return Token(COLON, ":")
+                return Token(TokenType.COLON.value, ":")
 
             if self.current_char == ",":
                 self.advance()
-                return Token(COMMA, ",")
+                return Token(TokenType.COMMA.value, ",")
             
             if self.current_char == ":" and self.peek() == "=":
                 self.advance()
                 self.advance()
-                return Token(ASSIGN, ":=")
+                return Token(TokenType.ASSIGN.value, ":=")
             
             if self.current_char == ";":
                 self.advance()
-                return Token(SEMI, ";")
+                return Token(TokenType.SEMI.value, ";")
             
             if self.current_char == ".":
                 self.advance()
-                return Token(DOT, ".")
+                return Token(TokenType.DOT.value, ".")
             
             if self.current_char.isdigit():
-                return Token(INTEGER, self.integer())
+                return Token(TokenType.INTEGER.value, self.integer())
             
             if self.current_char == "+":
                 self.advance()
-                return Token(PLUS, "+")
+                return Token(TokenType.PLUS.value, "+")
             
             if self.current_char == "-":
                 self.advance()
-                return Token(MINUS, "-")
+                return Token(TokenType.MINUS.value, "-")
             
             if self.current_char == "/":
                 self.advance()
-                return Token(FLOAT_DIV, "/")
+                return Token(TokenType.FLOAT_DIV.value, "/")
             
             if self.current_char == "*":
                 self.advance()
-                return Token(MULTIPLY, "*")
+                return Token(TokenType.MULTIPLY.value, "*")
             
             if self.current_char == "(":
                 self.advance()
-                return Token(LPAREN, "(")
+                return Token(TokenType.LPAREN.value, "(")
             
             if self.current_char == ")":
                 self.advance()
-                return Token(RPAREN, ")")
+                return Token(TokenType.RPAREN.value, ")")
 
             self.error()
 
-        return Token(EOF, None)
+        return Token(TokenType.EOF.value, None)
 
 
 ##############################
@@ -311,13 +250,13 @@ class Parser:
 
     def program(self):
         """program: PROGRAM variable SEMI block DOT"""
-        self.eat(PROGRAM)
+        self.eat(TokenType.PROGRAM.value)
         var_node = self.variable()
         prog_name = var_node.value
-        self.eat(SEMI)
+        self.eat(TokenType.SEMI.value)
         block_node = self.block()
         program_node = Program(prog_name, block_node)
-        self.eat(DOT)
+        self.eat(TokenType.DOT.value)
         return program_node
 
     def block(self):
@@ -330,26 +269,26 @@ class Parser:
     def declarations(self):
         """declarations: VAR (variable declaration SEMI)+ | empty"""
         declarations = []
-        if self.current_token.type == VAR:
-            self.eat(VAR)
-            while self.current_token.type == ID:
+        if self.current_token.type == TokenType.VAR.value:
+            self.eat(TokenType.VAR.value)
+            while self.current_token.type == TokenType.ID.value:
                 var_decl = self.variable_declaration()
                 declarations.extend(var_decl)
-                self.eat(SEMI)
+                self.eat(TokenType.SEMI.value)
 
         return declarations
 
     def variable_declaration(self):
         """variable_declaration: ID (COMMA ID)* COLON type_spec"""
     
-        var_nodes = [VAR(self.current_token)]
-        self.eat(ID)
+        var_nodes = [Var(self.current_token)]
+        self.eat(TokenType.ID.value)
 
-        while self.current_token.type == COMMA:
-            self.eat(COMMA)
-            var_nodes.extend(VAR(self.current_token))
-            self.eat(ID)
-        self.eat(COLON)
+        while self.current_token.type == TokenType.COMMA.value:
+            self.eat(TokenType.COMMA.value)
+            var_nodes.extend(Var(self.current_token))
+            self.eat(TokenType.ID.value)
+        self.eat(TokenType.COLON.value)
 
         type_node = self.type_spec()
         var_declarations = [VarDecl(var_node, type_node) for var_node in var_nodes]
@@ -358,18 +297,18 @@ class Parser:
     def type_spec(self):
         """type_spec: INTEGER | REAL"""
         token = self.current_token
-        if self.current_token.type == INTEGER:
-            self.eat(INTEGER)
+        if self.current_token.type == TokenType.INTEGER.value:
+            self.eat(TokenType.INTEGER.value)
         else:
-            self.eat(REAL)
+            self.eat(TokenType.REAL.value)
         node = Type(Token)
         return node
 
     def compound_statement(self):
         """compound_statement: BEGIN statement_list END"""
-        self.eat(BEGIN)
+        self.eat(TokenType.BEGIN.value)
         nodes = self.statement_list()
-        self.eat(END)
+        self.eat(TokenType.END.value)
 
         root = Compound()
         for node in nodes:
@@ -384,11 +323,11 @@ class Parser:
         node = self.statement()
         results = [node]
 
-        while self.current_token.type == SEMI:
-            self.eat(SEMI)
+        while self.current_token.type == TokenType.SEMI.value:
+            self.eat(TokenType.SEMI.value)
             results.append(self.statement())
 
-        if self.current_token.type == ID:
+        if self.current_token.type == TokenType.ID.value:
             self.error()
 
         return results
@@ -397,9 +336,9 @@ class Parser:
         """
         statement: compound_statement | assignment_statement | empty
         """
-        if self.current_token.type == BEGIN:
+        if self.current_token.type == TokenType.BEGIN.value:
             node = self.compound_statement()
-        elif self.current_token.type == ID:
+        elif self.current_token.type == TokenType.ID.value:
             node = self.assginment_statement()
         else:
             node = self.empty()
@@ -410,7 +349,7 @@ class Parser:
         """assignment: variable ASSIGN expr"""
         left = self.variable()
         token = self.current_token
-        self.eat(ASSIGN)
+        self.eat(TokenType.ASSIGN.value)
         right = self.expr()
         node = Assign(left, token, right)
         return node
@@ -418,7 +357,7 @@ class Parser:
     def variable(self):
         """variable: ID"""
         node = Var(self.current_token)
-        self.eat(ID)
+        self.eat(TokenType.ID.value)
         return node
 
     def empty(self):
@@ -434,24 +373,24 @@ class Parser:
                  | variable
         """
         token = self.current_token
-        if token.type == PLUS:
-            self.eat(PLUS)
+        if token.type == TokenType.PLUS.value:
+            self.eat(TokenType.PLUS.value)
             node = UnaryOp(token, self.factor())
             return node
-        elif token.type == MINUS:
-            self.eat(MINUS)
+        elif token.type == TokenType.MINUS.value:
+            self.eat(TokenType.MINUS.value)
             node = UnaryOp(token, self.factor())
             return node
-        elif token.type == INTEGER_CONST:
-            self.eat(INTEGER_CONST)
+        elif token.type == TokenType.INTEGER_CONST.value:
+            self.eat(TokenType.INTEGER_CONST.value)
             return Num(token)
-        elif token.type == REAL_CONST:
-            self.eat(REAL_CONST)
+        elif token.type == TokenType.REAL_CONST.value:
+            self.eat(TokenType.REAL_CONST.value)
             return Num(token)
-        elif token.type == LPAREN:
-            self.eat(LPAREN)
+        elif token.type == TokenType.LPAREN.value:
+            self.eat(TokenType.LPAREN.value)
             node = self.expr()
-            self.eat(RPAREN)
+            self.eat(TokenType.RPAREN.value)
             return node
         else:
             node = self.variable()
@@ -461,14 +400,14 @@ class Parser:
         """term: factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)*"""
         node = self.factor()
 
-        while self.current_token.type in (MULTIPLY, INTEGER_DIV, FLOAT_DIV):
+        while self.current_token.type in (TokenType.MULTIPLY.value, TokenType.INTEGER_DIV.value, TokenType.FLOAT_DIV.value):
             token = self.current_token
-            if token.type == MULTIPLY:
-                self.eat(MULTIPLY)
-            elif token.type == INTEGER_DIV:
-                self.eat(INTEGER_DIV)
-            elif token.type == FLOAT_DIV:
-                self.eat(FLOAT_DIV)
+            if token.type == TokenType.MULTIPLY.value:
+                self.eat(TokenType.MULTIPLY.value)
+            elif token.type == TokenType.INTEGER_DIV:
+                self.eat(TokenType.INTEGER_DIV)
+            elif token.type == TokenType.FLOAT_DIV.value:
+                self.eat(TokenType.FLOAT_DIV.value)
 
             node = BinOp(left=node, op=token, right=self.factor())
 
@@ -482,12 +421,12 @@ class Parser:
         factor: INTEGER
         """
         node = self.term()
-        while self.current_token.type in (PLUS, MINUS):
+        while self.current_token.type in (TokenType.PLUS.value, TokenType.MINUS.value):
             token = self.current_token
-            if token.type == PLUS:
-                self.eat(PLUS)
-            elif token.type == MINUS:
-                self.eat(MINUS)
+            if token.type == TokenType.PLUS.value:
+                self.eat(TokenType.PLUS.value)
+            elif token.type == TokenType.MINUS.value:
+                self.eat(TokenType.MINUS.value)
 
             node = BinOp(left=node, op=token, right=self.term())
 
@@ -495,7 +434,7 @@ class Parser:
 
     def parse(self):
         node = self.program()
-        if self.current_token.type != EOF:
+        if self.current_token.type != TokenType.EOF.value:
             self.error()
 
         return node
@@ -531,21 +470,21 @@ class Interpreter(NodeVisitor):
 
     def visit_UnaryOp(self, node):
         op = node.op.type
-        if op == PLUS:
+        if op == TokenType.PLUS.value:
             return +self.visit(node.expr)
-        elif op == MINUS:
+        elif op == TokenType.MINUS.value:
             return -self.visit(node.expr)
 
     def visit_BinOp(self, node):
-        if node.op.type == PLUS:
+        if node.op.type == TokenType.PLUS.value:
             return self.visit(node.left) + self.visit(node.right)
-        elif node.op.type == MINUS:
+        elif node.op.type == TokenType.MINUS.value:
             return self.visit(node.left) - self.visit(node.right)
-        elif node.op.type == MULTIPLY:
+        elif node.op.type == TokenType.MULTIPLY.value:
             return self.visit(node.left) * self.visit(node.right)
-        elif node.op.type == INTEGER_DIV:
+        elif node.op.type == TokenType.INTEGER_DIV.value:
             return self.visit(node.left) // self.visit(node.right)
-        elif node.op.type == FLOAT_DIV:
+        elif node.op.type == TokenType.FLOAT_DIV.value:
             return self.visit(node.left) / self.visti(node.right)
 
     def visit_Num(self, node):
