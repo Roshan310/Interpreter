@@ -1,7 +1,8 @@
 from enum import Enum
 
+
 class TokenType(Enum):
-    
+
     INTEGER = "INTEGER"
     PLUS = "PLUS"
     MINUS = "MINUS"
@@ -24,4 +25,5 @@ class TokenType(Enum):
     FLOAT_DIV = "FLOAT_DIV"
     REAL = "REAL"
     EOF = "EOF"
-
+    # EOF represents end-of-file token which indicate
+    # that there is no more input for Lexical Analysis
