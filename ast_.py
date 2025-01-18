@@ -1,7 +1,6 @@
 class AST:
     pass
 
-
 class Compound(AST):
     """Represents a 'BEGIN ... END' block"""
 
@@ -71,3 +70,16 @@ class Type(AST):
     def __init__(self, token) -> None:
         self.token = token
         self.value = token.value
+
+
+class ProcedureDecl(AST):
+    def __init__(self, proc_name, params, block_node) -> None:
+        self.proc_name = proc_name
+        self.params = params
+        self.block_node = block_node
+
+
+class Param(AST):
+    def __init__(self, var_node, type_node) -> None:
+        self.var_node = var_node
+        self.type_node = type_node
