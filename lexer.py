@@ -13,8 +13,8 @@ RESERVED_KEYWORDS = {
     "INTEGER": Token(TokenType.INTEGER.value, "INTEGER"),
     "REAL": Token(TokenType.REAL.value, "REAL"),
     "BEGIN": Token(TokenType.BEGIN.value, "BEGIN"),
-    "END": Token(TokenType.END.value, "END")
-    
+    "END": Token(TokenType.END.value, "END"),
+    "PROCEDURE": Token(TokenType.PROCEDURE.value, "PROCEDURE")
 }
 
 
@@ -32,7 +32,7 @@ class Lexer:
         if peek_pos > len(self.text) - 1:
             return None
         else:
-            return self.text[self.peek_pos]
+            return self.text[peek_pos]
 
     def advance(self):
         self.pos += 1
@@ -77,11 +77,10 @@ class Lexer:
             result += self.current_char
             self.advance()
 
-        token = RESERVED_KEYWORDS.get(result, Token(TokenType.ID.value, result))
+        token = RESERVED_KEYWORDS.get(result.upper(), Token(TokenType.ID.value, result))
         return token
 
     def get_next_token(self):
-
         while self.current_char is not None:
             if self.current_char.isspace():
                 self.skip_whitespace()
@@ -97,10 +96,6 @@ class Lexer:
 
             if self.current_char.isdigit():
                 return self.number()
-            
-            if self.current_char == ":":
-                self.advance()
-                return Token(TokenType.COLON.value, ":")
 
             if self.current_char == ",":
                 self.advance()
@@ -110,6 +105,10 @@ class Lexer:
                 self.advance()
                 self.advance()
                 return Token(TokenType.ASSIGN.value, ":=")
+            
+            if self.current_char == ":":
+                self.advance()
+                return Token(TokenType.COLON.value, ":")
             
             if self.current_char == ";":
                 self.advance()
@@ -147,6 +146,6 @@ class Lexer:
                 return Token(TokenType.RPAREN.value, ")")
 
             self.error()
-
+        print(f"Current char ({self.current_char})")
         return Token(TokenType.EOF.value, None)
 

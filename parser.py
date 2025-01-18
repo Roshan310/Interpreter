@@ -16,9 +16,11 @@ class Parser:
         raise Exception("Error parsing Input")
 
     def eat(self, token_type):
+        print(f"Current token: {self.current_token}, Expected: {token_type}")
         if self.current_token.type == token_type:
             self.current_token = self.lexer.get_next_token()
         else:
+            print("SORRY BROTHER NO TOKEN MATCHED!!")
             self.error()
 
     def program(self):
@@ -40,17 +42,41 @@ class Parser:
         return node
 
     def declarations(self):
-        """declarations: VAR (variable declaration SEMI)+ | empty"""
+        """declarations: VAR (variable declaration SEMI)+ | 
+        (PROCEDURE ID (LPAREN formal_parameter_list RPAREN)? SEMI block SEMI)* | empty"""
         declarations = []
-        if self.current_token.type == TokenType.VAR.value:
-            self.eat(TokenType.VAR.value)
-            while self.current_token.type == TokenType.ID.value:
-                var_decl = self.variable_declaration()
-                declarations.extend(var_decl)
+
+        while True:
+            if self.current_token.type == TokenType.VAR.value:
+                self.eat(TokenType.VAR.value)
+                while self.current_token.type == TokenType.ID.value:
+                    var_decl = self.variable_declaration()
+                    declarations.extend(var_decl)
+                    self.eat(TokenType.SEMI.value)
+
+            elif self.current_token.type == TokenType.PROCEDURE.value:
+                self.eat(TokenType.PROCEDURE.value)
+                proc_name = self.current_token.value
+                self.eat(TokenType.ID.value)
                 self.eat(TokenType.SEMI.value)
+                block_node = self.block()
+                proc_decl = ProcedureDecl(proc_name, block_node)
+                declarations.append(proc_decl)
+                self.eat(TokenType.SEMI.value)
+            
+            else:
+                break
 
         return declarations
 
+    def formal_parameter_list(self):
+        """formal_parameter_list: formal_parameters | formal_parameters SEMI formal_parameter_list """
+        pass
+
+    def formal_parameters(self):
+        """formal_parameters: ID (COMMA ID)* COLON type_spec"""
+        param_nodes = []
+        
     def variable_declaration(self):
         """variable_declaration: ID (COMMA ID)* COLON type_spec"""
     
@@ -59,7 +85,7 @@ class Parser:
 
         while self.current_token.type == TokenType.COMMA.value:
             self.eat(TokenType.COMMA.value)
-            var_nodes.extend(Var(self.current_token))
+            var_nodes.append(Var(self.current_token))
             self.eat(TokenType.ID.value)
         self.eat(TokenType.COLON.value)
 
@@ -100,8 +126,6 @@ class Parser:
             self.eat(TokenType.SEMI.value)
             results.append(self.statement())
 
-        if self.current_token.type == TokenType.ID.value:
-            self.error()
 
         return results
 
